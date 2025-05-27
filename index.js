@@ -125,31 +125,39 @@ function showAuthModal(type) {
 
 function handleLogin() {
     const email = document.getElementById('email').value;
-    // Simulăm un login simplu
+    const password = document.getElementById('password').value;
+    
+    // Simulare autentificare simplă
     currentUser = {
-        name: 'Guest User',
+        name: email.split('@')[0],
         email: email,
         memberSince: new Date().toLocaleDateString()
     };
+    
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
     showLoggedInState();
     authModal.classList.add('hidden');
     showSection('workout-planner');
+    loadUserData();
 }
 
 function handleRegister() {
     const name = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
-    // Simulăm înregistrarea
+    const password = document.getElementById('reg-password').value;
+    
+    // Simulare înregistrare simplă
     currentUser = {
         name: name,
         email: email,
         memberSince: new Date().toLocaleDateString()
     };
+    
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
     showLoggedInState();
     authModal.classList.add('hidden');
     showSection('workout-planner');
+    loadUserData();
 }
 
 function handleLogout() {
@@ -189,102 +197,84 @@ function loadUserData() {
 function loadSavedWorkouts() {
     if (!currentUser) return;
     
-    db.collection('users').doc(currentUser.memberId)
-        .collection('workouts').get()
-        .then((querySnapshot) => {
-            savedWorkouts = [];
-            querySnapshot.forEach((doc) => {
-                savedWorkouts.push({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            });
-            
-            document.getElementById('profile-workouts').value = savedWorkouts.length;
-            
-            // Display workouts
-            const workoutsList = document.getElementById('saved-workouts-list');
-            
-            if (savedWorkouts.length === 0) {
-                workoutsList.innerHTML = '<div class="text-gray-500 text-center py-8">No saved workouts yet. Create a workout in the Workout Planner.</div>';
-                return;
+    // Încărcăm din localStorage în loc de Firebase
+    const savedWorkouts = JSON.parse(localStorage.getItem(`workouts_${currentUser.email}`) || '[]');
+    
+    document.getElementById('profile-workouts').value = savedWorkouts.length;
+    
+    // Display workouts
+    const workoutsList = document.getElementById('saved-workouts-list');
+    
+    if (savedWorkouts.length === 0) {
+        workoutsList.innerHTML = '<div class="text-gray-500 text-center py-8">No saved workouts yet. Create a workout in the Workout Planner.</div>';
+        return;
+    }
+    
+    workoutsList.innerHTML = '';
+    savedWorkouts.forEach((workout, index) => {
+        const workoutCard = document.createElement('div');
+        workoutCard.className = 'bg-white p-6 rounded-lg shadow-md flex flex-col';
+        
+        const header = document.createElement('div');
+        header.className = 'flex justify-between items-center mb-4';
+        
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-bold';
+        title.textContent = workout.name || `Workout ${index + 1}`;
+        
+        const actions = document.createElement('div');
+        actions.className = 'flex space-x-2';
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'text-blue-600 hover:text-blue-800';
+        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>';
+        editBtn.addEventListener('click', () => loadWorkoutForEdit(index));
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'text-red-600 hover:text-red-800';
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+        deleteBtn.addEventListener('click', () => deleteWorkout(index));
+        
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+        
+        header.appendChild(title);
+        header.appendChild(actions);
+        
+        const exerciseCount = document.createElement('div');
+        exerciseCount.className = 'text-gray-600 mb-4';
+        exerciseCount.textContent = `${workout.exercises.length} exercise${workout.exercises.length !== 1 ? 's' : ''}`;
+        
+        const exercisesList = document.createElement('ul');
+        exercisesList.className = 'text-gray-700 mb-4 flex-grow';
+        
+        workout.exercises.forEach((exercise, i) => {
+            if (i < 3) {
+                const exerciseItem = document.createElement('li');
+                exerciseItem.className = 'mb-1';
+                exerciseItem.textContent = exercise.name;
+                exercisesList.appendChild(exerciseItem);
             }
-            
-            workoutsList.innerHTML = '';
-            savedWorkouts.forEach((workout, index) => {
-                const workoutCard = document.createElement('div');
-                workoutCard.className = 'bg-white p-6 rounded-lg shadow-md flex flex-col';
-                
-                const header = document.createElement('div');
-                header.className = 'flex justify-between items-center mb-4';
-                
-                const title = document.createElement('h3');
-                title.className = 'text-xl font-bold';
-                title.textContent = workout.name || `Workout ${index + 1}`;
-                
-                const actions = document.createElement('div');
-                actions.className = 'flex space-x-2';
-                
-                const editBtn = document.createElement('button');
-                editBtn.className = 'text-blue-600 hover:text-blue-800';
-                editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>';
-                editBtn.addEventListener('click', () => loadWorkoutForEdit(index));
-                
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'text-red-600 hover:text-red-800';
-                deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
-                deleteBtn.addEventListener('click', () => deleteWorkout(index));
-                
-                actions.appendChild(editBtn);
-                actions.appendChild(deleteBtn);
-                
-                header.appendChild(title);
-                header.appendChild(actions);
-                
-                const exerciseCount = document.createElement('div');
-                exerciseCount.className = 'text-gray-600 mb-4';
-                exerciseCount.textContent = `${workout.exercises.length} exercise${workout.exercises.length !== 1 ? 's' : ''}`;
-                
-                const workoutImage = document.createElement('img');
-                workoutImage.src = 'https://static.wikitide.net/avidwiki/thumb/e/e6/FXP_%282016%29.png/480px-FXP_%282016%29.png';
-                workoutImage.alt = 'Workout Image';
-                workoutImage.className = 'w-full h-40 object-cover rounded mb-4';
-                
-                const exercisesList = document.createElement('ul');
-                exercisesList.className = 'text-gray-700 mb-4 flex-grow';
-                
-                    const displayLimit = Math.min(3, workout.exercises.length);
-                for (let i = 0; i < displayLimit; i++) {
-                    const exercise = workout.exercises[i];
-                    const exerciseItem = document.createElement('li');
-                    exerciseItem.className = 'mb-1';
-                    exerciseItem.textContent = exercise.name;
-                    exercisesList.appendChild(exerciseItem);
-                }
-                
-                if (workout.exercises.length > 3) {
-                    const moreItem = document.createElement('li');
-                    moreItem.className = 'text-blue-600';
-                    moreItem.textContent = `...and ${workout.exercises.length - 3} more`;
-                    exercisesList.appendChild(moreItem);
-                }
-                
-                const startBtn = document.createElement('button');
-                startBtn.className = 'bg-blue-600 text-white w-full py-2 rounded-lg font-medium hover:bg-blue-700 transition mt-auto';
-                startBtn.textContent = 'Start Workout';
-                startBtn.addEventListener('click', () => startWorkout(workout));
-                
-                    workoutCard.appendChild(header);
-                workoutCard.appendChild(workoutImage);
-                workoutCard.appendChild(exerciseCount);
-                workoutCard.appendChild(exercisesList);
-                workoutCard.appendChild(startBtn);
-                workoutsList.appendChild(workoutCard);
-            });
-        })
-        .catch((error) => {
-            console.error("Error loading workouts:", error);
         });
+        
+        if (workout.exercises.length > 3) {
+            const moreItem = document.createElement('li');
+            moreItem.className = 'text-blue-600';
+            moreItem.textContent = `...and ${workout.exercises.length - 3} more`;
+            exercisesList.appendChild(moreItem);
+        }
+        
+        const startBtn = document.createElement('button');
+        startBtn.className = 'bg-blue-600 text-white w-full py-2 rounded-lg font-medium hover:bg-blue-700 transition mt-auto';
+        startBtn.textContent = 'Start Workout';
+        startBtn.addEventListener('click', () => startWorkout(workout));
+        
+        workoutCard.appendChild(header);
+        workoutCard.appendChild(exerciseCount);
+        workoutCard.appendChild(exercisesList);
+        workoutCard.appendChild(startBtn);
+        workoutsList.appendChild(workoutCard);
+    });
 }
 
 function searchExercises() {
